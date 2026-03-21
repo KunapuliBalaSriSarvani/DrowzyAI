@@ -17,33 +17,60 @@ def index():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    # My own stats
+    # ── Student own stats ──
     total_logs  = AlertLog.query.filter_by(user_id=current_user.id).count()
     drowsy_logs = AlertLog.query.filter_by(user_id=current_user.id, alert_type='DROWSY').count()
     yawn_logs   = AlertLog.query.filter_by(user_id=current_user.id, alert_type='YAWN').count()
-    recent_logs = AlertLog.query.filter_by(user_id=current_user.id)\
-                    .order_by(AlertLog.timestamp.desc()).limit(10).all()
 
+    # Recent logs
+    if current_user.role == 'admin':
+        # Admin sees ALL users' recent logs
+        recent_logs = AlertLog.query.order_by(AlertLog.timestamp.desc()).limit(10).all()
+    else:
+        recent_logs = AlertLog.query.filter_by(user_id=current_user.id)\
+                        .order_by(AlertLog.timestamp.desc()).limit(10).all()
+
+    # Weekly chart data
     week_ago = datetime.utcnow() - timedelta(days=7)
-    rows = db.session.query(
-        func.date(AlertLog.timestamp).label('date'),
-        func.count(AlertLog.id).label('count')
-    ).filter(
-        AlertLog.user_id == current_user.id,
-        AlertLog.timestamp >= week_ago
-    ).group_by(func.date(AlertLog.timestamp)).all()
+    if current_user.role == 'admin':
+        # Admin sees system-wide weekly
+        rows = db.session.query(
+            func.date(AlertLog.timestamp).label('date'),
+            func.count(AlertLog.id).label('count')
+        ).filter(
+            AlertLog.timestamp >= week_ago
+        ).group_by(func.date(AlertLog.timestamp)).all()
+    else:
+        rows = db.session.query(
+            func.date(AlertLog.timestamp).label('date'),
+            func.count(AlertLog.id).label('count')
+        ).filter(
+            AlertLog.user_id == current_user.id,
+            AlertLog.timestamp >= week_ago
+        ).group_by(func.date(AlertLog.timestamp)).all()
 
-    # FIXED: Convert Row to dict for JSON serialization
     weekly = [{'date': str(r.date), 'count': int(r.count)} for r in rows]
 
-    # Admin extra stats
+    # ── Admin extra stats ──
     all_users_count  = 0
     all_alerts_count = 0
+    all_drowsy_count = 0
     students_count   = 0
+    user_stats       = []
+
     if current_user.role == 'admin':
         all_users_count  = User.query.count()
         all_alerts_count = AlertLog.query.count()
+        all_drowsy_count = AlertLog.query.filter_by(alert_type='DROWSY').count()
         students_count   = User.query.filter_by(role='student').count()
+        users = User.query.all()
+        for u in users:
+            user_stats.append({
+                'user':   u,
+                'total':  AlertLog.query.filter_by(user_id=u.id).count(),
+                'drowsy': AlertLog.query.filter_by(user_id=u.id, alert_type='DROWSY').count(),
+                'yawn':   AlertLog.query.filter_by(user_id=u.id, alert_type='YAWN').count(),
+            })
 
     return render_template('dashboard.html',
         total_logs=total_logs,
@@ -53,7 +80,9 @@ def dashboard():
         weekly=weekly,
         all_users_count=all_users_count,
         all_alerts_count=all_alerts_count,
-        students_count=students_count
+        all_drowsy_count=all_drowsy_count,
+        students_count=students_count,
+        user_stats=user_stats
     )
 
 @main_bp.route('/webcam')
