@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}History — DrowzyAI{% endblock %}
+{% block content %}
+<div class="page-header animate-in d-flex justify-between align-center">
+  <div>
+    <div class="page-title">≡ ALERT HISTORY</div>
+    <div class="page-sub">Complete log of all detected events</div>
+  </div>
+  <div style="font-family:'Orbitron',monospace;font-size:24px;color:var(--accent)">
+    {{ logs|length }} <span style="font-size:12px;color:var(--text-dim)">TOTAL</span>
+  </div>
+</div>
+<div class="card animate-in">
+  {% if logs %}
+  <div class="d-flex gap-2 mb-2" style="flex-wrap:wrap;">
+    <button class="btn btn-outline" style="padding:5px 14px;font-size:12px" onclick="filterTable('all')">All</button>
+    <button class="btn btn-outline" style="padding:5px 14px;font-size:12px" onclick="filterTable('DROWSY')">Drowsy</button>
+    <button class="btn btn-outline" style="padding:5px 14px;font-size:12px" onclick="filterTable('YAWN')">Yawn</button>
+    <button class="btn btn-outline" style="padding:5px 14px;font-size:12px" onclick="filterTable('webcam')">Webcam</button>
+    <button class="btn btn-outline" style="padding:5px 14px;font-size:12px" onclick="filterTable('image')">Image</button>
+    <button class="btn btn-outline" style="padding:5px 14px;font-size:12px" onclick="filterTable('video')">Video</button>
+  </div>
+  <table class="data-table" id="histTable">
+    <thead><tr><th>#</th><th>Alert Type</th><th>Source</th><th>Details</th><th>Date &amp; Time</th></tr></thead>
+    <tbody>
+      {% for log in logs %}
+      <tr data-type="{{ log.alert_type }}" data-source="{{ log.source }}">
+        <td style="color:var(--text-dim);font-size:12px">{{ log.id }}</td>
+        <td>
+          {% if log.alert_type == 'DROWSY' %}<span class="badge badge-danger">DROWSY</span>
+          {% elif log.alert_type == 'YAWN'  %}<span class="badge badge-warning">YAWN</span>
+          {% else %}<span class="badge badge-info">{{ log.alert_type }}</span>{% endif %}
+        </td>
+        <td><span class="badge badge-info">{{ log.source }}</span></td>
+        <td style="color:var(--text-dim);font-size:12px">{{ log.details or '—' }}</td>
+        <td style="font-size:12px;color:var(--text-dim);font-family:'Orbitron',monospace;">
+          {{ log.timestamp.strftime('%d %b %Y  %H:%M:%S') }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="text-center text-dim" style="padding:50px;">
+    <div style="font-size:36px;margin-bottom:12px;">◎</div>
+    <div>No alerts recorded yet.</div>
+    <a href="{{ url_for('main.webcam') }}" class="btn btn-primary mt-3">Start Monitoring</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function filterTable(key) {
+  document.querySelectorAll('#histTable tbody tr').forEach(row => {
+    const show = key==='all' || row.dataset.type===key || row.dataset.source===key;
+    row.style.display = show ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

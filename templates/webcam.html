@@ -1,46 +1,116 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>DrowzyAI</title>
-    <style>
-        body {
-            text-align: center;
-            font-family: Arial;
-            background-color: #111;
-            color: white;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 10px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .start { background: green; color: white; }
-        .stop { background: red; color: white; }
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Live Monitor — DrowzyAI{% endblock %}
+{% block content %}
+<div class="page-header animate-in">
+  <div class="page-title">◎ LIVE MONITOR</div>
+  <div class="page-sub">Real-time drowsiness and face recognition via webcam</div>
+</div>
+<div class="monitor-grid animate-in">
+  <div>
+    <div class="video-wrapper" id="videoWrapper">
+      <div class="video-placeholder" id="placeholder">
+        <div style="font-size:52px;opacity:.3">◎</div>
+        <div>Camera not started</div>
+        <div style="color:var(--text-dim);font-size:12px">Click Start to begin monitoring</div>
+      </div>
+      <img id="videoFeed" src="" alt="Live feed" style="display:none;width:100%;">
+    </div>
+    <div class="camera-controls">
+      <button class="btn btn-success btn-lg" id="startBtn" onclick="startCamera()">▶ Start Camera</button>
+      <button class="btn btn-danger btn-lg" id="stopBtn" onclick="stopCamera()" disabled>■ Stop Camera</button>
+    </div>
+    <div class="card mt-2" id="statusBar" style="display:none;">
+      <div class="d-flex justify-between align-center">
+        <div>
+          <span style="color:var(--text-dim);font-size:12px">STATUS</span>
+          <div style="font-family:'Orbitron',monospace;font-size:13px;color:var(--accent2)">◉ MONITORING ACTIVE</div>
+        </div>
+        <div id="alertCount" style="font-family:'Orbitron',monospace;font-size:28px;color:var(--danger)">
+          0 <span style="font-size:12px;color:var(--text-dim)">alerts</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="info-panel">
+    <div class="card">
+      <div class="info-title">HOW IT WORKS</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
+        <li class="d-flex gap-2 align-center"><span class="alert-dot dot-ok"></span><span style="font-size:13px">EAR measures eye openness</span></li>
+        <li class="d-flex gap-2 align-center"><span class="alert-dot dot-warn"></span><span style="font-size:13px">MAR detects yawning</span></li>
+        <li class="d-flex gap-2 align-center"><span class="alert-dot dot-danger"></span><span style="font-size:13px">Alarm after 20 drowsy frames</span></li>
+        <li class="d-flex gap-2 align-center"><span class="alert-dot" style="background:var(--accent)"></span><span style="font-size:13px">LBPH face recognition</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="info-title">LIVE ALERT FEED</div>
+      <div class="alert-feed" id="alertFeed">
+        <div style="color:var(--text-dim);text-align:center;padding:16px;font-size:13px">Alerts will appear here...</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="info-title">TIPS</div>
+      <p style="color:var(--text-dim);font-size:13px;line-height:1.7">
+        ▸ Ensure good lighting<br>
+        ▸ Face the camera directly<br>
+        ▸ Register face photo for recognition<br>
+        ▸ Keep camera at eye level
+      </p>
+    </div>
+  </div>
+</div>
+<audio id="alarmSound" loop>
+  <source src="{{ url_for('static', filename='audio/alarm.mp3') }}" type="audio/mpeg">
+</audio>
+{% endblock %}
+{% block scripts %}
+<script>
+let alertCount = 0;
+let alarmPlaying = false;
 
-    <h1>🚗 DrowzyAI - Driver Monitoring</h1>
+function startCamera() {
+  document.getElementById('placeholder').style.display = 'none';
+  const feed = document.getElementById('videoFeed');
+  feed.src = "{{ url_for('ai.video_feed') }}?" + Date.now();
+  feed.style.display = 'block';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('statusBar').style.display = 'block';
+}
 
-    <button class="start" onclick="startCam()">Start</button>
-    <button class="stop" onclick="stopCam()">Stop</button>
+function stopCamera() {
+  const feed = document.getElementById('videoFeed');
+  feed.src = '';
+  feed.style.display = 'none';
+  document.getElementById('placeholder').style.display = 'flex';
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('statusBar').style.display = 'none';
+  stopAlarm();
+  fetch("{{ url_for('ai.stop_camera') }}", {method:'POST'});
+}
 
-    <br><br>
+function addAlert(type) {
+  alertCount++;
+  document.getElementById('alertCount').innerHTML =
+    alertCount + '<span style="font-size:12px;color:var(--text-dim)"> alerts</span>';
+  const feed = document.getElementById('alertFeed');
+  const item = document.createElement('div');
+  item.className = 'alert-item';
+  const dotClass = type === 'DROWSY' ? 'dot-danger' : 'dot-warn';
+  item.innerHTML = `<span class="alert-dot ${dotClass}"></span>
+    <span><strong>${type}</strong> at ${new Date().toLocaleTimeString()}</span>`;
+  feed.prepend(item);
+  if (type === 'DROWSY' && !alarmPlaying) {
+    try { document.getElementById('alarmSound').play(); alarmPlaying = true; } catch(e){}
+  }
+}
 
-    <img id="video" width="700">
-
-    <script>
-        function startCam() {
-            document.getElementById("video").src = "/video";
-        }
-
-        function stopCam() {
-            document.getElementById("video").src = "";
-        }
-    </script>
-
-</body>
-</html>
+function stopAlarm() {
+  try {
+    document.getElementById('alarmSound').pause();
+    document.getElementById('alarmSound').currentTime = 0;
+  } catch(e){}
+  alarmPlaying = false;
+}
+</script>
+{% endblock %}

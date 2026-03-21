@@ -1,10 +1,165 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Analyze File — DrowzyAI{% endblock %}
+{% block content %}
+<div class="page-header animate-in">
+  <div class="page-title">⬆ ANALYZE FILE</div>
+  <div class="page-sub">Upload image or video for drowsiness and face detection</div>
+</div>
+<div class="upload-tabs animate-in">
+  <button class="upload-tab active" onclick="switchTab('image', this)">🖼 Image Analysis</button>
+  <button class="upload-tab" onclick="switchTab('video', this)">🎥 Video Analysis</button>
+</div>
 
-</body>
-</html>
+<!-- Image Tab -->
+<div class="tab-panel active" id="tab-image">
+  <div class="card animate-in">
+    <div class="info-title">UPLOAD IMAGE</div>
+    <div class="upload-zone" onclick="document.getElementById('imageInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleImageDrop(event)">
+      <div class="upload-icon">🖼</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text)">Drop image here or click to browse</div>
+      <div style="color:var(--text-dim);margin-top:6px;font-size:12px">JPG, PNG, WEBP supported</div>
+    </div>
+    <input type="file" id="imageInput" accept="image/*" style="display:none" onchange="previewImage(this)">
+    <div id="imagePreviewWrap" style="display:none;margin-top:16px;">
+      <img id="imagePreview" style="max-height:300px;border-radius:8px;border:1px solid var(--border);max-width:100%;">
+      <div class="mt-2">
+        <button class="btn btn-primary" onclick="analyzeImage()">
+          <span id="imgSpinner" style="display:none" class="spinner"></span>
+          🔍 Analyze Image
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="result-panel card" id="imageResult">
+    <div class="info-title">ANALYSIS RESULT</div>
+    <div class="grid-2">
+      <img id="resultImage" class="result-image" src="" alt="Result">
+      <div>
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px">DETECTED ALERTS</div>
+        <div id="resultBadges" class="result-badges mb-2"></div>
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:6px">RECOGNIZED FACE</div>
+        <div id="resultFace" style="font-size:18px;font-family:'Orbitron',monospace;color:var(--accent)"></div>
+        <div style="color:var(--text-dim);font-size:12px;margin-top:12px">Saved to alert history.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Video Tab -->
+<div class="tab-panel" id="tab-video">
+  <div class="card animate-in">
+    <div class="info-title">UPLOAD VIDEO</div>
+    <div class="upload-zone" onclick="document.getElementById('videoInput').click()">
+      <div class="upload-icon">🎥</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text)">Drop video here or click to browse</div>
+      <div style="color:var(--text-dim);margin-top:6px;font-size:12px">MP4, AVI, MOV — Max 50MB</div>
+    </div>
+    <input type="file" id="videoInput" accept="video/*" style="display:none" onchange="previewVideo(this)">
+    <div id="videoPreviewWrap" style="display:none;margin-top:16px;">
+      <video id="videoPreview" controls style="max-height:280px;border-radius:8px;border:1px solid var(--border);max-width:100%;"></video>
+      <div class="mt-2">
+        <button class="btn btn-primary" onclick="analyzeVideo()">
+          <span id="vidSpinner" style="display:none" class="spinner"></span>
+          🔍 Analyze Video
+        </button>
+      </div>
+    </div>
+    <div id="videoProgress" style="display:none;margin-top:16px;">
+      <div style="color:var(--text-dim);font-size:13px;margin-bottom:8px">Processing...</div>
+      <div style="background:var(--bg3);border-radius:4px;height:6px;">
+        <div id="progressBar" style="height:6px;border-radius:4px;background:var(--accent);width:0%;transition:width .5s;"></div>
+      </div>
+    </div>
+  </div>
+  <div class="result-panel card" id="videoResult">
+    <div class="info-title">VIDEO ANALYSIS RESULT</div>
+    <div id="videoResultContent"></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.upload-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+function previewImage(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('imagePreview').src = e.target.result;
+    document.getElementById('imagePreviewWrap').style.display = 'block';
+    document.getElementById('imageResult').classList.remove('show');
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function handleImageDrop(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('imageInput').files = dt.files;
+    previewImage(document.getElementById('imageInput'));
+  }
+}
+function analyzeImage() {
+  const file = document.getElementById('imageInput').files[0];
+  if (!file) { alert('Please select an image.'); return; }
+  document.getElementById('imgSpinner').style.display = 'inline-block';
+  const fd = new FormData(); fd.append('image', file);
+  fetch("{{ url_for('ai.analyze_image') }}", { method:'POST', body:fd })
+    .then(r => r.json()).then(data => {
+      document.getElementById('imgSpinner').style.display = 'none';
+      document.getElementById('resultImage').src = data.result_image;
+      const badges = document.getElementById('resultBadges');
+      badges.innerHTML = '';
+      if (data.alerts && data.alerts.length)
+        data.alerts.forEach(a => {
+          const cls = a==='DROWSY'?'badge-danger':(a==='YAWN'?'badge-warning':'badge-info');
+          badges.innerHTML += `<span class="badge ${cls}">${a}</span>`;
+        });
+      else badges.innerHTML = '<span class="badge badge-success">ALL CLEAR</span>';
+      document.getElementById('resultFace').textContent = data.face || 'Unknown';
+      document.getElementById('imageResult').classList.add('show');
+    }).catch(() => { document.getElementById('imgSpinner').style.display='none'; alert('Analysis failed.'); });
+}
+function previewVideo(input) {
+  if (!input.files[0]) return;
+  document.getElementById('videoPreview').src = URL.createObjectURL(input.files[0]);
+  document.getElementById('videoPreviewWrap').style.display = 'block';
+  document.getElementById('videoResult').classList.remove('show');
+}
+function analyzeVideo() {
+  const file = document.getElementById('videoInput').files[0];
+  if (!file) { alert('Please select a video.'); return; }
+  document.getElementById('vidSpinner').style.display = 'inline-block';
+  document.getElementById('videoProgress').style.display = 'block';
+  let prog = 0;
+  const bar = document.getElementById('progressBar');
+  const pInt = setInterval(() => { prog = Math.min(prog + Math.random()*8, 90); bar.style.width = prog+'%'; }, 400);
+  const fd = new FormData(); fd.append('video', file);
+  fetch("{{ url_for('ai.analyze_video') }}", { method:'POST', body:fd })
+    .then(r => r.json()).then(data => {
+      clearInterval(pInt); bar.style.width='100%';
+      document.getElementById('vidSpinner').style.display='none';
+      document.getElementById('videoProgress').style.display='none';
+      let html = `<div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-card" style="--stat-color:var(--accent)"><div class="stat-value">${data.total_frames}</div><div class="stat-label">Frames Analyzed</div></div>
+        <div class="stat-card" style="--stat-color:var(--danger)"><div class="stat-value">${data.alert_counts?.DROWSY||0}</div><div class="stat-label">Drowsy Frames</div></div>
+        <div class="stat-card" style="--stat-color:var(--warn)"><div class="stat-value">${data.alert_counts?.YAWN||0}</div><div class="stat-label">Yawn Frames</div></div>
+      </div><div class="result-badges mt-2">`;
+      if (data.alerts && data.alerts.length)
+        data.alerts.forEach(a => { const cls=a==='DROWSY'?'badge-danger':(a==='YAWN'?'badge-warning':'badge-info'); html+=`<span class="badge ${cls}">${a} (${data.alert_counts[a]||0}x)</span>`; });
+      else html += '<span class="badge badge-success">ALL CLEAR</span>';
+      html += '</div>';
+      document.getElementById('videoResultContent').innerHTML = html;
+      document.getElementById('videoResult').classList.add('show');
+    }).catch(() => { clearInterval(pInt); document.getElementById('vidSpinner').style.display='none'; document.getElementById('videoProgress').style.display='none'; alert('Video analysis failed.'); });
+}
+</script>
+{% endblock %}

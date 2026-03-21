@@ -1,10 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Login — DrowzyAI{% endblock %}
+{% block auth_content %}
+<div class="auth-page">
+  <div class="auth-box animate-in">
+    <div class="auth-logo">
+      <span class="auth-logo-icon">◉ DrowzyAI</span>
+      <span class="auth-logo-sub">DRIVER MONITORING SYSTEM</span>
+    </div>
+    <div class="auth-title">Sign In to Continue</div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" id="email" class="form-control" placeholder="you@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" id="password" class="form-control" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary w-100 btn-lg" onclick="handleLogin(event)">→ Sign In</button>
+    <div class="auth-footer">
+      Don't have an account? <a href="{{ url_for('auth.register') }}" class="auth-link">Register here</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) { alert('Please fill in all fields.'); return; }
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = "{{ url_for('auth.login') }}";
+  [['email', email], ['password', password]].forEach(([n, v]) => {
+    const i = document.createElement('input');
+    i.type='hidden'; i.name=n; i.value=v;
+    form.appendChild(i);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
+{% endblock %}

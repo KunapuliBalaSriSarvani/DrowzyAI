@@ -1,10 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Dashboard — DrowzyAI{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="page-header animate-in">
+  <div class="page-title">▦ DASHBOARD</div>
+  <div class="page-sub">Welcome back, {{ current_user.name }} — Here's your monitoring overview</div>
+</div>
+<div class="stat-grid animate-in">
+  <div class="stat-card" style="--stat-color:var(--accent)">
+    <span class="stat-icon">◉</span>
+    <div class="stat-value">{{ total_logs }}</div>
+    <div class="stat-label">Total Alerts</div>
+  </div>
+  <div class="stat-card" style="--stat-color:var(--danger)">
+    <span class="stat-icon">😴</span>
+    <div class="stat-value">{{ drowsy_logs }}</div>
+    <div class="stat-label">Drowsy Events</div>
+  </div>
+  <div class="stat-card" style="--stat-color:var(--warn)">
+    <span class="stat-icon">🥱</span>
+    <div class="stat-value">{{ yawn_logs }}</div>
+    <div class="stat-label">Yawn Events</div>
+  </div>
+  <div class="stat-card" style="--stat-color:var(--accent2)">
+    <span class="stat-icon">✓</span>
+    <div class="stat-value">{{ current_user.role.upper() }}</div>
+    <div class="stat-label">Account Type</div>
+  </div>
+</div>
+<div class="grid-2 animate-in">
+  <div class="card">
+    <div class="info-title">WEEKLY ALERT ACTIVITY</div>
+    <canvas id="weeklyChart" height="180"></canvas>
+  </div>
+  <div class="card">
+    <div class="info-title">RECENT ALERTS</div>
+    {% if recent_logs %}
+    <table class="data-table">
+      <thead><tr><th>Type</th><th>Source</th><th>Time</th></tr></thead>
+      <tbody>
+        {% for log in recent_logs %}
+        <tr>
+          <td>
+            {% if log.alert_type == 'DROWSY' %}<span class="badge badge-danger">DROWSY</span>
+            {% elif log.alert_type == 'YAWN'  %}<span class="badge badge-warning">YAWN</span>
+            {% else %}<span class="badge badge-info">{{ log.alert_type }}</span>{% endif %}
+          </td>
+          <td><span style="color:var(--text-dim)">{{ log.source }}</span></td>
+          <td style="font-size:12px;color:var(--text-dim)">{{ log.timestamp.strftime('%d %b %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-dim" style="padding:30px">No alerts yet. Start monitoring!</div>
+    {% endif %}
+  </div>
+</div>
+<div class="card mt-3 animate-in">
+  <div class="info-title">QUICK ACTIONS</div>
+  <div class="d-flex gap-2" style="flex-wrap:wrap;">
+    <a href="{{ url_for('main.webcam') }}" class="btn btn-primary">◎ Start Live Monitor</a>
+    <a href="{{ url_for('main.upload') }}" class="btn btn-outline">⬆ Analyze Image / Video</a>
+    <a href="{{ url_for('main.history') }}" class="btn btn-outline">≡ View Full History</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const weeklyData = {{ weekly | tojson }};
+const labels = weeklyData.map(d => d[0] || d.date || '');
+const counts  = weeklyData.map(d => d[1] || d.count || 0);
+new Chart(document.getElementById('weeklyChart'), {
+  type: 'bar',
+  data: {
+    labels: labels.length ? labels : ['No data'],
+    datasets: [{ label:'Alerts', data: counts.length ? counts : [0],
+      backgroundColor:'rgba(0,212,255,0.25)', borderColor:'#00d4ff',
+      borderWidth:2, borderRadius:4 }]
+  },
+  options: {
+    responsive:true, plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:'#5a7a90'},grid:{color:'rgba(30,58,82,0.4)'}},
+      y:{ticks:{color:'#5a7a90'},grid:{color:'rgba(30,58,82,0.4)'},beginAtZero:true}
+    }
+  }
+});
+</script>
+{% endblock %}
