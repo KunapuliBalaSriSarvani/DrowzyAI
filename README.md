@@ -74,7 +74,7 @@ If EAR stays below threshold for **20 consecutive frames** → DROWSY alert trig
 
 ---
 
-### 👄 MAR — Mouth Aspect Ratio
+###  MAR — Mouth Aspect Ratio
 ```
         TOP (13)
           *
