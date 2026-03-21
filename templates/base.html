@@ -21,20 +21,67 @@
       <div class="user-avatar">{{ current_user.name[0].upper() }}</div>
       <div class="user-info">
         <div class="user-name">{{ current_user.name }}</div>
-        <div class="user-role">{{ current_user.role }}</div>
+        <div class="user-role"
+          style="color:{% if current_user.role == 'admin' %}var(--warn){% else %}var(--accent2){% endif %}">
+          {% if current_user.role == 'admin' %}⚙ ADMIN{% else %}🎓 STUDENT{% endif %}
+        </div>
       </div>
     </div>
+
     <ul class="sidebar-nav">
-      <li><a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint=='main.dashboard' %}active{% endif %}"><span class="nav-icon">▦</span> Dashboard</a></li>
-      <li><a href="{{ url_for('main.webcam') }}"    class="nav-link {% if request.endpoint=='main.webcam' %}active{% endif %}"><span class="nav-icon">◎</span> Live Monitor</a></li>
-      <li><a href="{{ url_for('main.upload') }}"    class="nav-link {% if request.endpoint=='main.upload' %}active{% endif %}"><span class="nav-icon">⬆</span> Analyze File</a></li>
-      <li><a href="{{ url_for('main.history') }}"   class="nav-link {% if request.endpoint=='main.history' %}active{% endif %}"><span class="nav-icon">≡</span> Alert History</a></li>
       {% if current_user.role == 'admin' %}
-      <li><a href="{{ url_for('main.admin') }}"     class="nav-link {% if request.endpoint=='main.admin' %}active{% endif %}"><span class="nav-icon">◈</span> Admin Panel</a></li>
+      <!-- ADMIN MENU -->
+      <li>
+        <a href="{{ url_for('main.dashboard') }}"
+           class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+          <span class="nav-icon">◈</span> Admin Dashboard
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('main.admin') }}"
+           class="nav-link {% if request.endpoint == 'main.admin' %}active{% endif %}">
+          <span class="nav-icon">👥</span> Manage Users
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('main.all_history') }}"
+           class="nav-link {% if request.endpoint == 'main.all_history' %}active{% endif %}">
+          <span class="nav-icon">≡</span> All Alerts
+        </a>
+      </li>
+
+      {% else %}
+      <!-- STUDENT MENU -->
+      <li>
+        <a href="{{ url_for('main.dashboard') }}"
+           class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
+          <span class="nav-icon">▦</span> Dashboard
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('main.webcam') }}"
+           class="nav-link {% if request.endpoint == 'main.webcam' %}active{% endif %}">
+          <span class="nav-icon">◎</span> Live Monitor
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('main.upload') }}"
+           class="nav-link {% if request.endpoint == 'main.upload' %}active{% endif %}">
+          <span class="nav-icon">⬆</span> Analyze File
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('main.history') }}"
+           class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}">
+          <span class="nav-icon">≡</span> My History
+        </a>
+      </li>
       {% endif %}
     </ul>
+
     <a href="{{ url_for('auth.logout') }}" class="sidebar-logout">⏻ Logout</a>
   </nav>
+
   <main class="main-content">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for cat, msg in messages %}
@@ -45,7 +92,7 @@
   </main>
 </div>
 {% else %}
-{% block auth_content %}{% endblock %}
+  {% block auth_content %}{% endblock %}
 {% endif %}
 <script src="{{ url_for('static', filename='js/validation.js') }}"></script>
 {% block scripts %}{% endblock %}

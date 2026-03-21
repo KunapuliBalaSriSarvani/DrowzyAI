@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}Admin — DrowzyAI{% endblock %}
+{% block title %}Admin Panel — DrowzyAI{% endblock %}
 {% block content %}
 <div class="page-header animate-in">
-  <div class="page-title">◈ ADMIN PANEL</div>
-  <div class="page-sub">Full system overview — all users, alerts and statistics</div>
+  <div class="page-title">👥 MANAGE USERS</div>
+  <div class="page-sub">Full user management — delete users, clear logs, view stats</div>
 </div>
 
 <div class="stat-grid animate-in">
@@ -29,20 +29,32 @@
   </div>
 </div>
 
-<!-- Per User Stats -->
 <div class="card animate-in">
-  <div class="info-title">USER ALERT STATISTICS</div>
+  <div class="info-title">ALL REGISTERED USERS</div>
   <table class="data-table">
     <thead>
       <tr>
-        <th>Name</th><th>Email</th><th>Role</th>
-        <th>Face</th><th>Total Alerts</th><th>Drowsy</th><th>Yawn</th><th>Joined</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Face</th>
+        <th>Total</th>
+        <th>Drowsy</th>
+        <th>Yawn</th>
+        <th>Joined</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for stat in user_stats %}
       <tr>
-        <td style="font-weight:700">{{ stat.user.name }}</td>
+        <td style="font-weight:700">
+          <div class="user-avatar"
+               style="width:26px;height:26px;font-size:11px;display:inline-flex;margin-right:8px;vertical-align:middle">
+            {{ stat.user.name[0].upper() }}
+          </div>
+          {{ stat.user.name }}
+        </td>
         <td style="color:var(--text-dim);font-size:12px">{{ stat.user.email }}</td>
         <td>
           {% if stat.user.role == 'admin' %}
@@ -53,9 +65,9 @@
         </td>
         <td>
           {% if stat.user.face_image %}
-            <span class="badge badge-success">✓ YES</span>
+            <span class="badge badge-success">✓</span>
           {% else %}
-            <span class="badge badge-danger">✗ NO</span>
+            <span class="badge badge-danger">✗</span>
           {% endif %}
         </td>
         <td style="font-family:'Orbitron',monospace;color:var(--accent)">{{ stat.total }}</td>
@@ -64,13 +76,44 @@
         <td style="font-size:11px;color:var(--text-dim)">
           {{ stat.user.created_at.strftime('%d %b %Y') }}
         </td>
+        <td>
+          {% if stat.user.id != current_user.id %}
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <!-- Clear logs -->
+            <form method="POST"
+                  action="{{ url_for('main.clear_logs', user_id=stat.user.id) }}"
+                  onsubmit="return confirm('Clear all logs for {{ stat.user.name }}?')">
+              <button type="submit"
+                      style="padding:4px 10px;border-radius:4px;border:1px solid var(--warn);
+                             background:transparent;color:var(--warn);font-size:11px;
+                             cursor:pointer;font-family:inherit;font-weight:700">
+                Clear Logs
+              </button>
+            </form>
+            <!-- Delete user -->
+            {% if stat.user.role != 'admin' %}
+            <form method="POST"
+                  action="{{ url_for('main.delete_user', user_id=stat.user.id) }}"
+                  onsubmit="return confirm('DELETE user {{ stat.user.name }}? This cannot be undone!')">
+              <button type="submit"
+                      style="padding:4px 10px;border-radius:4px;border:1px solid var(--danger);
+                             background:transparent;color:var(--danger);font-size:11px;
+                             cursor:pointer;font-family:inherit;font-weight:700">
+                Delete
+              </button>
+            </form>
+            {% endif %}
+          </div>
+          {% else %}
+          <span style="color:var(--text-dim);font-size:11px">You</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
-<!-- Recent Alerts -->
 <div class="card animate-in">
   <div class="info-title">RECENT ALERTS — ALL USERS</div>
   {% if all_logs %}
@@ -92,7 +135,7 @@
         </td>
         <td><span class="badge badge-info">{{ log.source }}</span></td>
         <td style="font-size:11px;color:var(--text-dim)">{{ log.details or '—' }}</td>
-        <td style="font-size:11px;color:var(--text-dim);font-family:'Orbitron',monospace;">
+        <td style="font-size:11px;color:var(--text-dim);font-family:'Orbitron',monospace">
           {{ log.timestamp.strftime('%d %b %H:%M') }}
         </td>
       </tr>
