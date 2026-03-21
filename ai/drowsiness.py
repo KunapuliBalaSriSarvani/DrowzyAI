@@ -182,24 +182,5 @@ def process_frame(frame, is_image=False):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.38, (100, 100, 100), 1)
 
     return frame, alerts
-```
 
----
 
-## Simple logic explained:
-```
-EAR value meaning:
-  0.25 - 0.35  →  Eyes OPEN  →  AWAKE ✅
-  0.18 - 0.25  →  Eyes half  →  NORMAL (no alert)
-  Below 0.18   →  Eyes CLOSED → DROWSY ⚠️ + ALARM 🔊
-
-MAR value meaning:
-  Below 0.65   →  Mouth normal  →  OK ✅
-  Above 0.65   →  Mouth wide open → YAWN detected 🥱
-
-Webcam mode:
-  Eyes closed for 20 frames continuously → ALARM plays 🔊
-
-Image mode:
-  Eyes closed in photo → DROWSY shown immediately
-  Mouth wide open → YAWN shown immediately
