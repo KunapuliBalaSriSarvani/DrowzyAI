@@ -20,6 +20,7 @@ def login():
         flash('Invalid email or password', 'error')
     return render_template('login.html')
 
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -60,6 +61,7 @@ def register():
         flash('Account created! Please login.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('register.html')
+
 
 @auth_bp.route('/logout')
 @login_required

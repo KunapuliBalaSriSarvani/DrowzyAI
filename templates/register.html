@@ -2,10 +2,10 @@
 {% block title %}Register — DrowzyAI{% endblock %}
 {% block auth_content %}
 <div class="auth-page">
-  <div class="auth-box animate-in" style="max-width:480px;">
+  <div class="auth-box animate-in" style="max-width:470px;">
     <div class="auth-logo">
       <span class="auth-logo-icon">◉ DrowzyAI</span>
-      <span class="auth-logo-sub">CREATE YOUR ACCOUNT</span>
+      <span class="auth-logo-sub">Create Your Account</span>
     </div>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for cat, msg in messages %}
@@ -32,51 +32,11 @@
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Face Image <span style="color:var(--text-dim)">(for recognition)</span></label>
+      <label class="form-label">Face Photo <span style="color:var(--dim);font-weight:400">(for recognition)</span></label>
       <label class="file-input-label">
         <span>📷</span>
         <span id="face_file_name">Choose a clear face photo...</span>
         <input type="file" id="reg_face" accept="image/*" onchange="updateFileName(this)">
       </label>
       <div id="face_preview_wrap" style="display:none;margin-top:10px;">
-        <img id="face_preview" style="width:80px;height:80px;object-fit:cover;border-radius:50%;border:2px solid var(--accent);">
-      </div>
-    </div>
-    <button class="btn btn-primary w-100 btn-lg" onclick="handleRegister(event)">✓ Create Account</button>
-    <div class="auth-footer">
-      Already registered? <a href="{{ url_for('auth.login') }}" class="auth-link">Sign in</a>
-    </div>
-  </div>
-</div>
-{% endblock %}
-{% block scripts %}
-<script>
-function updateFileName(input) {
-  document.getElementById('face_file_name').textContent = input.files[0]?.name || 'No file chosen';
-  if (input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('face_preview').src = e.target.result;
-      document.getElementById('face_preview_wrap').style.display = 'block';
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
-}
-function handleRegister(e) {
-  e.preventDefault();
-  const name = document.getElementById('reg_name').value.trim();
-  const email = document.getElementById('reg_email').value.trim();
-  const password = document.getElementById('reg_password').value;
-  const role = document.getElementById('reg_role').value;
-  const faceFile = document.getElementById('reg_face').files[0];
-  if (!name || !email || !password) { alert('Please fill all required fields.'); return; }
-  if (password.length < 6) { alert('Password must be at least 6 characters.'); return; }
-  const fd = new FormData();
-  fd.append('name', name); fd.append('email', email);
-  fd.append('password', password); fd.append('role', role);
-  if (faceFile) fd.append('face_image', faceFile);
-  fetch("{{ url_for('auth.register') }}", { method:'POST', body:fd })
-    .then(r => { window.location.href = r.url; });
-}
-</script>
-{% endblock %}
+        <img id="face_preview" style="width:80px;height:80px;object-fit:cover;border-radius:50%

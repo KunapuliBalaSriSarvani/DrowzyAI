@@ -10,6 +10,7 @@ MODEL_PATH = 'uploads/face_model.yml'
 LABEL_MAP  = {}
 _trained   = False
 
+
 def train_faces():
     global recognizer, LABEL_MAP, _trained
     from models.user import User
@@ -45,12 +46,15 @@ def train_faces():
         print(f"[FaceRec] Trained: {LABEL_MAP}")
     else:
         _trained = False
+        print("[FaceRec] No face images found for training.")
+
 
 def load_model():
     global recognizer, _trained
     if os.path.exists(MODEL_PATH):
         recognizer.read(MODEL_PATH)
         _trained = True
+
 
 def recognize_face(frame):
     global _trained
@@ -82,8 +86,8 @@ def recognize_face(frame):
 
         cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
         (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.52, 1)
-        cv2.rectangle(frame, (x, y-th-10), (x+tw+8, y), color, -1)
-        cv2.putText(frame, text, (x+4, y-4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, (0,0,0), 1)
+        cv2.rectangle(frame, (x, y - th - 10), (x + tw + 8, y), color, -1)
+        cv2.putText(frame, text, (x + 4, y - 4),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, (0, 0, 0), 1)
 
     return frame, name

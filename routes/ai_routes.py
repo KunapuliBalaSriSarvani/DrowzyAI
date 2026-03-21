@@ -2,10 +2,11 @@ from flask import Blueprint, Response, request, jsonify, current_app
 from flask_login import login_required, current_user
 from models.user import AlertLog
 from extensions import db
-import cv2, os, time
+import cv2, os, time, base64
 
 ai_bp = Blueprint('ai', __name__)
 camera = None
+alert_buffer = []
 
 def get_camera():
     global camera
@@ -19,49 +20,68 @@ def release_camera():
         camera.release()
         camera = None
 
-def generate_frames(user_id):
+def generate_frames(user_id, app):
     from ai.drowsiness import process_frame
+    from ai.face_recognition import recognize_face
+    global alert_buffer
     cap = get_camera()
+    last_log_time = {}
 
     while True:
         success, frame = cap.read()
         if not success:
             break
-
         frame, alerts = process_frame(frame)
+        frame, face_name = recognize_face(frame)
 
-        # ✅ SAVE ALERT TO DB
-        for alert in alerts:
-            try:
-                log = AlertLog(
-                    user_id=user_id,
-                    alert_type=alert,
-                    source='webcam'
-                )
-                db.session.add(log)
-                db.session.commit()
-                print("Saved alert:", alert)
-            except:
-                db.session.rollback()
+        if alerts:
+            for alert in alerts:
+                now = time.time()
+                if alert not in last_log_time or (now - last_log_time[alert]) > 5:
+                    last_log_time[alert] = now
+                    alert_buffer.append(alert)
+                    if len(alert_buffer) > 50:
+                        alert_buffer.pop(0)
+                    with app.app_context():
+                        try:
+                            log = AlertLog(user_id=user_id, alert_type=alert, source='webcam')
+                            db.session.add(log)
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            print(f"Log error: {e}")
 
-        _, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-
+        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        if not ret:
+            continue
         yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+
 
 @ai_bp.route('/video_feed')
 @login_required
 def video_feed():
     uid = current_user.id
-    return Response(generate_frames(uid),
+    app = current_app._get_current_object()
+    return Response(generate_frames(uid, app),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 @ai_bp.route('/stop_camera', methods=['POST'])
 @login_required
 def stop_camera():
     release_camera()
     return jsonify({'status': 'stopped'})
+
+
+@ai_bp.route('/get_alerts', methods=['GET'])
+@login_required
+def get_alerts():
+    global alert_buffer
+    alerts = list(alert_buffer)
+    alert_buffer = []
+    return jsonify({'alerts': alerts})
+
 
 @ai_bp.route('/analyze_image', methods=['POST'])
 @login_required
@@ -84,12 +104,15 @@ def analyze_image():
     out_filename = f"result_{filename}"
     out_path = os.path.join(upload_dir, out_filename)
     cv2.imwrite(out_path, frame)
-    for alert in (alerts or []):
-        log = AlertLog(user_id=current_user.id, alert_type=alert, source='image',
-                       snapshot_path=f"uploads/snapshots/{out_filename}")
-        db.session.add(log)
+    alert_list = alerts if alerts else ['NORMAL']
+    for alert in alert_list:
+        try:
+            log = AlertLog(user_id=current_user.id, alert_type=alert,
+                           source='image', snapshot_path=f"uploads/snapshots/{out_filename}")
+            db.session.add(log)
+        except Exception as e:
+            print(f"Log error: {e}")
     db.session.commit()
-    import base64
     with open(out_path, 'rb') as f:
         img_b64 = base64.b64encode(f.read()).decode()
     return jsonify({
@@ -98,6 +121,7 @@ def analyze_image():
         'face': face_name,
         'status': 'done'
     })
+
 
 @ai_bp.route('/analyze_video', methods=['POST'])
 @login_required
@@ -113,8 +137,8 @@ def analyze_video():
     filepath = os.path.join(upload_dir, filename)
     file.save(filepath)
     cap = cv2.VideoCapture(filepath)
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    fps    = cap.get(cv2.CAP_PROP_FPS) or 25
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     out_filename = f"result_{filename}"
     out_path = os.path.join(upload_dir, out_filename)
@@ -137,9 +161,11 @@ def analyze_video():
     alert_counts = {}
     for a in all_alerts:
         alert_counts[a] = alert_counts.get(a, 0) + 1
+    if not alert_counts:
+        alert_counts['NORMAL'] = 1
     for alert_type, count in alert_counts.items():
-        log = AlertLog(user_id=current_user.id, alert_type=alert_type,
-                       source='video', details=f"Detected {count} times in {frame_count} frames",
+        log = AlertLog(user_id=current_user.id, alert_type=alert_type, source='video',
+                       details=f"Detected {count} times in {frame_count} frames",
                        snapshot_path=f"uploads/videos/{out_filename}")
         db.session.add(log)
     db.session.commit()
@@ -147,6 +173,5 @@ def analyze_video():
         'alerts': list(alert_counts.keys()),
         'alert_counts': alert_counts,
         'total_frames': frame_count,
-        'output_video': out_filename,
         'status': 'done'
     })

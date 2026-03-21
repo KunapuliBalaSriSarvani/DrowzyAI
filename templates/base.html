@@ -45,7 +45,7 @@
   </main>
 </div>
 {% else %}
-  {% block auth_content %}{% endblock %}
+{% block auth_content %}{% endblock %}
 {% endif %}
 <script src="{{ url_for('static', filename='js/validation.js') }}"></script>
 {% block scripts %}{% endblock %}

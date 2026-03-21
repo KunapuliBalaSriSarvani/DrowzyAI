@@ -5,7 +5,7 @@
   <div class="auth-box animate-in">
     <div class="auth-logo">
       <span class="auth-logo-icon">◉ DrowzyAI</span>
-      <span class="auth-logo-sub">DRIVER MONITORING SYSTEM</span>
+      <span class="auth-logo-sub">Driver Monitoring System</span>
     </div>
     <div class="auth-title">Sign In to Continue</div>
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -32,7 +32,7 @@
 <script>
 function handleLogin(e) {
   e.preventDefault();
-  const email = document.getElementById('email').value.trim();
+  const email    = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   if (!email || !password) { alert('Please fill in all fields.'); return; }
   const form = document.createElement('form');
@@ -40,7 +40,7 @@ function handleLogin(e) {
   form.action = "{{ url_for('auth.login') }}";
   [['email', email], ['password', password]].forEach(([n, v]) => {
     const i = document.createElement('input');
-    i.type='hidden'; i.name=n; i.value=v;
+    i.type = 'hidden'; i.name = n; i.value = v;
     form.appendChild(i);
   });
   document.body.appendChild(form);

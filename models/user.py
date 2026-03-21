@@ -21,6 +21,7 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+
 class AlertLog(db.Model):
     __tablename__ = 'alert_logs'
     id = db.Column(db.Integer, primary_key=True)
@@ -31,6 +32,7 @@ class AlertLog(db.Model):
     snapshot_path = db.Column(db.String(200), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     details = db.Column(db.Text, nullable=True)
+
 
 @login_manager.user_loader
 def load_user(user_id):

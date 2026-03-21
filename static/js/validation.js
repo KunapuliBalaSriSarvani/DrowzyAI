@@ -1,6 +1,4 @@
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+function validateEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 
 function showError(el, msg) {
   let err = el.parentNode.querySelector('.field-error');
