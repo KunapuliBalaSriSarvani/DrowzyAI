@@ -347,29 +347,7 @@ python fix_admin.py
 
 ---
 
-## 📊 Database Schema
 
-### Users Table
-| Column | Type | Description |
-|---|---|---|
-| id | Integer | Primary key |
-| name | String | Full name |
-| email | String | Unique email |
-| password_hash | String | Hashed password |
-| role | String | admin / student |
-| face_image | String | Path to face photo |
-| created_at | DateTime | Registration time |
-
-### AlertLog Table
-| Column | Type | Description |
-|---|---|---|
-| id | Integer | Primary key |
-| user_id | ForeignKey | Linked user |
-| alert_type | String | DROWSY / YAWN / NORMAL |
-| source | String | webcam / image / video |
-| details | Text | Extra info |
-| snapshot_path | String | Result image path |
-| timestamp | DateTime | When alert occurred |
 
 ---
 
