@@ -1,0 +1,1 @@
+DrowzyAI is an AI-based driver monitoring system that detects drowsiness using eye blink analysis and identifies users using face recognition. It supports image, video, and webcam inputs with real-time alerts.
