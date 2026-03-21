@@ -2,12 +2,18 @@ import cv2
 import mediapipe as mp
 from scipy.spatial import distance as dist
 import numpy as np
-import datetime
 
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(refine_landmarks=True, max_num_faces=1,
-                                   min_detection_confidence=0.5,
-                                   min_tracking_confidence=0.5)
+face_mesh_video = mp_face_mesh.FaceMesh(
+    refine_landmarks=True, max_num_faces=1,
+    min_detection_confidence=0.3,
+    min_tracking_confidence=0.3
+)
+face_mesh_image = mp_face_mesh.FaceMesh(
+    static_image_mode=True, max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.3
+)
 
 LEFT_EYE     = [33, 160, 158, 133, 153, 144]
 RIGHT_EYE    = [362, 385, 387, 263, 373, 380]
@@ -17,7 +23,7 @@ MOUTH_LEFT   = 78
 MOUTH_RIGHT  = 308
 
 EAR_THRESHOLD   = 0.25
-MAR_THRESHOLD   = 0.6
+MAR_THRESHOLD   = 0.55
 FRAME_THRESHOLD = 20
 YAWN_THRESHOLD  = 15
 
@@ -51,27 +57,31 @@ def draw_bar(frame, x, y, w, val, max_val, color, label):
     cv2.rectangle(frame, (x, y), (x + w, y + 12), (40, 40, 40), -1)
     cv2.rectangle(frame, (x, y), (x + int(w * ratio), y + 12), color, -1)
     cv2.putText(frame, f"{label}: {val:.2f}", (x, y - 4),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.38, (180, 180, 180), 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
 
 
-def process_frame(frame):
+def _run_detection(frame, face_mesh_obj, flip=False):
     global counter, yawn_counter
     alerts = []
-    frame  = cv2.flip(frame, 1)
+
+    if flip:
+        frame = cv2.flip(frame, 1)
+
     h, w, _ = frame.shape
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Dark HUD panel
+    # Dark HUD overlay
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (265, h), (6, 10, 18), -1)
-    cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+    cv2.rectangle(overlay, (0, 0), (260, h), (8, 12, 20), -1)
+    cv2.addWeighted(overlay, 0.45, frame, 0.55, 0, frame)
     cv2.putText(frame, "DrowzyAI Monitor", (10, 22),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 255), 2)
-    cv2.line(frame, (0, 30), (265, 30), (0, 200, 255), 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
+    cv2.line(frame, (0, 28), (260, 28), (0, 200, 255), 1)
 
-    results = face_mesh.process(rgb)
+    results = face_mesh_obj.process(rgb)
+
     status_text  = "NO FACE DETECTED"
-    status_color = (100, 100, 100)
+    status_color = (128, 128, 128)
     ear_val = 0.0
     mar_val = 0.0
 
@@ -103,16 +113,16 @@ def process_frame(frame):
                 counter += 1
                 if counter > FRAME_THRESHOLD:
                     alerts.append("DROWSY")
-                    status_text  = "DROWSY ALERT!"
+                    status_text  = "DROWSY!"
                     status_color = (0, 0, 255)
                     al = frame.copy()
-                    cv2.rectangle(al, (0, 0), (w, h), (0, 0, 140), -1)
-                    cv2.addWeighted(al, 0.2, frame, 0.8, 0, frame)
-                    cv2.putText(frame, "!! DROWSY ALERT !!", (w//2 - 160, h//2),
-                                cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 0, 255), 3)
+                    cv2.rectangle(al, (0, 0), (w, h), (0, 0, 160), -1)
+                    cv2.addWeighted(al, 0.18, frame, 0.82, 0, frame)
+                    cv2.putText(frame, "DROWSY ALERT!", (w//2 - 130, h//2),
+                                cv2.FONT_HERSHEY_DUPLEX, 1.1, (0, 0, 255), 3)
                 else:
-                    status_text  = "EYES CLOSING..."
-                    status_color = (0, 130, 255)
+                    status_text  = "EYES CLOSING"
+                    status_color = (0, 165, 255)
             else:
                 counter      = 0
                 status_text  = "AWAKE"
@@ -123,25 +133,48 @@ def process_frame(frame):
                 yawn_counter += 1
                 if yawn_counter > YAWN_THRESHOLD:
                     alerts.append("YAWN")
-                    cv2.putText(frame, "YAWNING DETECTED!", (w - 260, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 165, 255), 2)
+                    cv2.putText(frame, "YAWNING!", (w - 200, 50),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 165, 255), 2)
             else:
                 yawn_counter = 0
 
-    # HUD bars
-    draw_bar(frame, 10, 46,  230, ear_val, 0.5,            (0, 255, 100), "EAR")
-    draw_bar(frame, 10, 74,  230, mar_val, 1.0,            (0, 165, 255), "MAR")
-    draw_bar(frame, 10, 102, 230, float(counter), float(FRAME_THRESHOLD), (0, 0, 255), "Drowsy")
+            # For static images — detect immediately without frame counter
+            if ear_val < EAR_THRESHOLD and "DROWSY" not in alerts:
+                alerts.append("DROWSY")
+                status_text  = "DROWSY!"
+                status_color = (0, 0, 255)
 
-    # Status box
-    cv2.rectangle(frame, (6, h - 46), (259, h - 8), (14, 18, 26), -1)
-    cv2.rectangle(frame, (6, h - 46), (259, h - 8), (30, 60, 80), 1)
-    cv2.putText(frame, f"STATUS: {status_text}", (12, h - 20),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, status_color, 2)
+            if mar_val > MAR_THRESHOLD and "YAWN" not in alerts:
+                alerts.append("YAWN")
+                cv2.putText(frame, "YAWNING!", (w - 200, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 165, 255), 2)
 
-    # Timestamp
+    draw_bar(frame, 10, 45,  220, ear_val, 0.5,            (0, 255, 100), "EAR")
+    draw_bar(frame, 10, 72,  220, mar_val, 1.0,            (0, 165, 255), "MAR")
+    draw_bar(frame, 10, 99,  220, counter, FRAME_THRESHOLD, (0, 0,   255), "Drowsy")
+
+    cv2.rectangle(frame, (6, h - 44), (254, h - 8), (16, 20, 28), -1)
+    cv2.putText(frame, f"STATUS: {status_text}", (12, h - 18),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_color, 2)
+
+    import datetime
     ts = datetime.datetime.now().strftime("%H:%M:%S")
-    cv2.putText(frame, ts, (10, h - 54),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.36, (80, 100, 110), 1)
+    cv2.putText(frame, ts, (10, h - 52),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.38, (100, 100, 100), 1)
 
     return frame, alerts
+
+
+def process_frame(frame, is_image=False):
+    """
+    is_image=True  -> uploaded image (no flip, static mode)
+    is_image=False -> live webcam (flip, video mode)
+    """
+    if is_image:
+        # Reset counters for image mode — detect immediately
+        global counter, yawn_counter
+        counter      = 0
+        yawn_counter = 0
+        return _run_detection(frame, face_mesh_image, flip=False)
+    else:
+        return _run_detection(frame, face_mesh_video, flip=True)

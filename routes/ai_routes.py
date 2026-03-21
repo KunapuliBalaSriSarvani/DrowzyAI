@@ -32,7 +32,7 @@ def generate_frames(user_id, app):
         if not success:
             break
 
-        frame, alerts = process_frame(frame)
+        frame, alerts = process_frame(frame, is_image=False)
         frame, face_name = recognize_face(frame)
 
         if alerts:
@@ -104,7 +104,14 @@ def analyze_image():
     if frame is None:
         return jsonify({'error': 'Cannot read image'}), 400
 
-    frame, alerts = process_frame(frame)
+    # Resize if too large
+    h, w = frame.shape[:2]
+    if w > 1280:
+        scale = 1280 / w
+        frame = cv2.resize(frame, (1280, int(h * scale)))
+
+    # FIXED: is_image=True so no flip + immediate detection
+    frame, alerts = process_frame(frame, is_image=True)
     frame, face_name = recognize_face(frame)
 
     out_filename = f"result_{filename}"
@@ -114,14 +121,16 @@ def analyze_image():
     for alert in (alerts or []):
         try:
             log = AlertLog(user_id=current_user.id, alert_type=alert,
-                           source='image', snapshot_path=f"uploads/snapshots/{out_filename}")
+                           source='image',
+                           snapshot_path=f"uploads/snapshots/{out_filename}")
             db.session.add(log)
         except Exception as e:
             print(f"Log error: {e}")
 
     if not alerts:
         log = AlertLog(user_id=current_user.id, alert_type='NORMAL',
-                       source='image', snapshot_path=f"uploads/snapshots/{out_filename}")
+                       source='image',
+                       snapshot_path=f"uploads/snapshots/{out_filename}")
         db.session.add(log)
 
     db.session.commit()
@@ -171,7 +180,8 @@ def analyze_video():
             break
         frame_count += 1
         if frame_count % 2 == 0:
-            frame, alerts = process_frame(frame)
+            # Video frames — no flip, use image mode for per-frame detection
+            frame, alerts = process_frame(frame, is_image=True)
             frame, _      = recognize_face(frame)
             all_alerts.extend(alerts or [])
         writer.write(frame)
@@ -192,7 +202,8 @@ def analyze_video():
 
     if not alert_counts:
         log = AlertLog(user_id=current_user.id, alert_type='NORMAL',
-                       source='video', details=f"No alerts in {frame_count} frames")
+                       source='video',
+                       details=f"No alerts in {frame_count} frames")
         db.session.add(log)
 
     db.session.commit()
