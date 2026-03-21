@@ -6,8 +6,16 @@
 {% block content %}
 <div class="page-header animate-in">
   <div class="page-title">▦ DASHBOARD</div>
-  <div class="page-sub">Welcome back, {{ current_user.name }} — Here's your monitoring overview</div>
+  <div class="page-sub">Welcome back, {{ current_user.name }}
+    {% if current_user.role == 'admin' %}
+      — <span style="color:var(--warn)">ADMIN VIEW</span>
+    {% else %}
+      — Your personal monitoring overview
+    {% endif %}
+  </div>
 </div>
+
+<!-- Stats -->
 <div class="stat-grid animate-in">
   <div class="stat-card" style="--stat-color:var(--accent)">
     <span class="stat-icon">◉</span>
@@ -26,15 +34,52 @@
   </div>
   <div class="stat-card" style="--stat-color:var(--accent2)">
     <span class="stat-icon">✓</span>
-    <div class="stat-value">{{ current_user.role.upper() }}</div>
+    <div class="stat-value" style="font-size:20px;margin-top:6px">{{ current_user.role.upper() }}</div>
     <div class="stat-label">Account Type</div>
   </div>
 </div>
+
+{% if current_user.role == 'admin' %}
+<!-- ADMIN EXTRA STATS -->
+<div class="card animate-in" style="border-color:var(--warn);">
+  <div class="info-title" style="color:var(--warn)">◈ ADMIN — SYSTEM OVERVIEW</div>
+  <div class="stat-grid" style="margin-bottom:0">
+    <div class="stat-card" style="--stat-color:var(--accent)">
+      <div class="stat-value">{{ all_users_count }}</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat-card" style="--stat-color:var(--danger)">
+      <div class="stat-value">{{ all_alerts_count }}</div>
+      <div class="stat-label">System Alerts</div>
+    </div>
+    <div class="stat-card" style="--stat-color:var(--accent2)">
+      <div class="stat-value">{{ students_count }}</div>
+      <div class="stat-label">Students</div>
+    </div>
+  </div>
+  <div class="mt-2">
+    <a href="{{ url_for('main.admin') }}" class="btn btn-outline" style="border-color:var(--warn);color:var(--warn)">
+      ◈ Go to Full Admin Panel
+    </a>
+  </div>
+</div>
+{% endif %}
+
 <div class="grid-2 animate-in">
+  <!-- Weekly Chart -->
   <div class="card">
     <div class="info-title">WEEKLY ALERT ACTIVITY</div>
+    {% if weekly %}
     <canvas id="weeklyChart" height="180"></canvas>
+    {% else %}
+    <div class="text-center text-dim" style="padding:40px 0;">
+      <div style="font-size:32px;margin-bottom:8px;">📊</div>
+      <div>No data yet — start monitoring to see your graph!</div>
+    </div>
+    {% endif %}
   </div>
+
+  <!-- Recent Logs -->
   <div class="card">
     <div class="info-title">RECENT ALERTS</div>
     {% if recent_logs %}
@@ -46,48 +91,67 @@
           <td>
             {% if log.alert_type == 'DROWSY' %}<span class="badge badge-danger">DROWSY</span>
             {% elif log.alert_type == 'YAWN'  %}<span class="badge badge-warning">YAWN</span>
+            {% elif log.alert_type == 'NORMAL'%}<span class="badge badge-success">NORMAL</span>
             {% else %}<span class="badge badge-info">{{ log.alert_type }}</span>{% endif %}
           </td>
-          <td><span style="color:var(--text-dim)">{{ log.source }}</span></td>
-          <td style="font-size:12px;color:var(--text-dim)">{{ log.timestamp.strftime('%d %b %H:%M') }}</td>
+          <td><span class="badge badge-info">{{ log.source }}</span></td>
+          <td style="font-size:12px;color:var(--text-dim)">
+            {{ log.timestamp.strftime('%d %b %H:%M') }}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% else %}
-    <div class="text-center text-dim" style="padding:30px">No alerts yet. Start monitoring!</div>
+    <div class="text-center text-dim" style="padding:30px">
+      <div style="font-size:28px;margin-bottom:8px;">🎯</div>
+      No alerts yet. Start monitoring!
+    </div>
     {% endif %}
   </div>
 </div>
-<div class="card mt-3 animate-in">
+
+<!-- Quick Actions -->
+<div class="card mt-2 animate-in">
   <div class="info-title">QUICK ACTIONS</div>
   <div class="d-flex gap-2" style="flex-wrap:wrap;">
     <a href="{{ url_for('main.webcam') }}" class="btn btn-primary">◎ Start Live Monitor</a>
     <a href="{{ url_for('main.upload') }}" class="btn btn-outline">⬆ Analyze Image / Video</a>
     <a href="{{ url_for('main.history') }}" class="btn btn-outline">≡ View Full History</a>
+    {% if current_user.role == 'admin' %}
+    <a href="{{ url_for('main.admin') }}" class="btn btn-outline" style="border-color:var(--warn);color:var(--warn)">◈ Admin Panel</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
 {% block scripts %}
 <script>
 const weeklyData = {{ weekly | tojson }};
-const labels = weeklyData.map(d => d[0] || d.date || '');
-const counts  = weeklyData.map(d => d[1] || d.count || 0);
-new Chart(document.getElementById('weeklyChart'), {
-  type: 'bar',
-  data: {
-    labels: labels.length ? labels : ['No data'],
-    datasets: [{ label:'Alerts', data: counts.length ? counts : [0],
-      backgroundColor:'rgba(0,212,255,0.25)', borderColor:'#00d4ff',
-      borderWidth:2, borderRadius:4 }]
-  },
-  options: {
-    responsive:true, plugins:{legend:{display:false}},
-    scales:{
-      x:{ticks:{color:'#5a7a90'},grid:{color:'rgba(30,58,82,0.4)'}},
-      y:{ticks:{color:'#5a7a90'},grid:{color:'rgba(30,58,82,0.4)'},beginAtZero:true}
+if (weeklyData && weeklyData.length > 0) {
+  const labels = weeklyData.map(d => d.date || '');
+  const counts  = weeklyData.map(d => d.count || 0);
+  new Chart(document.getElementById('weeklyChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Alerts',
+        data: counts,
+        backgroundColor: 'rgba(0,212,255,0.25)',
+        borderColor: '#00d4ff',
+        borderWidth: 2,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5a7a90' }, grid: { color: 'rgba(30,58,82,0.4)' } },
+        y: { ticks: { color: '#5a7a90' }, grid: { color: 'rgba(30,58,82,0.4)' }, beginAtZero: true }
+      }
     }
-  }
-});
+  });
+}
 </script>
 {% endblock %}
