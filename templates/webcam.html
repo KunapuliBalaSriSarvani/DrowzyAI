@@ -1,10 +1,46 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <title>DrowzyAI</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial;
+            background-color: #111;
+            color: white;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .start { background: green; color: white; }
+        .stop { background: red; color: white; }
+    </style>
 </head>
 <body>
+
+    <h1>🚗 DrowzyAI - Driver Monitoring</h1>
+
+    <button class="start" onclick="startCam()">Start</button>
+    <button class="stop" onclick="stopCam()">Stop</button>
+
+    <br><br>
+
+    <img id="video" width="700">
+
+    <script>
+        function startCam() {
+            document.getElementById("video").src = "/video";
+        }
+
+        function stopCam() {
+            document.getElementById("video").src = "";
+        }
+    </script>
 
 </body>
 </html>
