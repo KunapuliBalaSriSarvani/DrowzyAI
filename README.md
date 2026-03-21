@@ -253,30 +253,6 @@ driver_monitoring_system/
 
 ---
 
-## 👥 User Roles
-
-### 🎓 Student
-| Feature | Access |
-|---|---|
-| Personal dashboard + safety score | ✅ |
-| Live webcam monitoring | ✅ |
-| Upload image for analysis | ✅ |
-| Upload video for analysis | ✅ |
-| Own alert history | ✅ |
-| Other students' data | ❌ |
-| Admin panel | ❌ |
-
-### ⚙️ Admin
-| Feature | Access |
-|---|---|
-| System-wide dashboard | ✅ |
-| All students' alert data | ✅ |
-| Per-student breakdown table | ✅ |
-| Delete student accounts | ✅ |
-| Clear student logs | ✅ |
-| Webcam monitoring | ❌ |
-| File upload analysis | ❌ |
-
 ---
 
 ## ⚙️ Tech Stack
