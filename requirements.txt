@@ -1,0 +1,14 @@
+flask
+flask-login
+flask-sqlalchemy
+werkzeug
+
+opencv-python
+opencv-contrib-python
+dlib
+imutils
+numpy
+scipy
+pandas
+
+playsound
