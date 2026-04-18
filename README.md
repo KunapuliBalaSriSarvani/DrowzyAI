@@ -8,6 +8,16 @@
 
 ---
 
+---
+
+## 👥 Team Members
+
+- Priyanka S M (Project Lead)
+- Sarvani KBS (Team Member)
+- Lakshmi Ananya A (Team Member)
+
+---
+
 ## 🎯 Goal
 
 Driver drowsiness is one of the leading causes of road accidents worldwide.
